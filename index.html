@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>DuoForge</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0c0d0f; --surface: #141619; --surface-2: #1b1e22; --raised: #2a2e35; --line: #23272c; --line-strong: #343941;
+    --text: #e9ebee; --muted: #9399a3; --faint: #626973;
+    --claude: #e0805c; --claude-soft: rgba(224, 128, 92, .13);
+    --gpt: #46b98e; --gpt-soft: rgba(70, 185, 142, .13);
+    --danger: #f07474; --danger-soft: rgba(240, 116, 116, .09);
+    --primary: #eef0f2; --on-primary: #0c0d0f; --code-bg: #090a0c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .35);
+    --font: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --display: "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --mono: "Cascadia Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f7f7f5; --surface: #ffffff; --surface-2: #f0f0ed; --raised: #ffffff; --line: #e4e4e0; --line-strong: #d1d1cb;
+      --text: #1a1b1e; --muted: #5f636c; --faint: #989ca4;
+      --claude: #c25a35; --claude-soft: rgba(194, 90, 53, .09);
+      --gpt: #17815d; --gpt-soft: rgba(23, 129, 93, .09);
+      --danger: #c43d3d; --danger-soft: rgba(196, 61, 61, .07);
+      --primary: #1a1b1e; --on-primary: #ffffff; --code-bg: #f4f4f1;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .06);
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid color-mix(in srgb, var(--text) 45%, transparent); outline-offset: 2px; }
+  .ico { flex: none; fill: currentColor; }
+  .ico.line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Top bar */
+  .shell { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { width: 24px; height: 24px; border-radius: 6px; display: block; }
+  .brand .name { font: 650 15px/1 var(--display); letter-spacing: -.015em; }
+  .crumb { color: var(--faint); font-size: 15px; }
+  .project { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font: 12.5px/1 var(--mono); }
+  .project span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-right { display: flex; align-items: center; gap: 4px; }
+  .busybar { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; }
+  .busybar span { position: absolute; top: 0; bottom: 0; width: 28%; border-radius: 2px; background: var(--c, var(--text)); animation: slide 1.4s cubic-bezier(.4, 0, .2, 1) infinite; }
+  @keyframes slide { from { left: -28%; } to { left: 100%; } }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, color .15s, opacity .15s; }
+  .btn:hover:not(:disabled) { background: var(--surface-2); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+  .btn.ghost.armed, .btn.ghost.armed:hover:not(:disabled) { color: var(--danger); background: var(--danger-soft); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  .btn.primary:hover:not(:disabled) { background: var(--primary); opacity: .86; }
+  .btn.stop { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
+  .btn.stop:hover { background: var(--danger-soft); }
+  .btn kbd { font: 11px var(--mono); opacity: .55; }
+  #planToggle { display: none; }
+
+  /* Layout */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 316px; min-height: 0; }
+  .chat { display: flex; flex-direction: column; min-height: 0; }
+  .log, .side { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .log { flex: 1; overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
+  .log-inner { max-width: 780px; margin: 0 auto; padding: 24px 24px 8px; }
+
+  /* Avatars */
+  .av { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; position: relative; }
+  .av.claude { background: var(--claude-soft); color: var(--claude); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--claude) 26%, transparent); }
+  .av.chatgpt { background: var(--gpt-soft); color: var(--gpt); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gpt) 26%, transparent); }
+  .av.sys { background: var(--danger-soft); color: var(--danger); font-weight: 700; font-size: 13px; }
+
+  /* Messages */
+  .msg { display: flex; gap: 12px; padding: 12px 0; }
+  .content { flex: 1; min-width: 0; }
+  .meta { display: flex; align-items: center; gap: 8px; min-height: 22px; margin-bottom: 2px; font-size: 13px; }
+  .meta b { font-weight: 600; }
+  .msg.claude .meta b { color: var(--claude); } .msg.chatgpt .meta b { color: var(--gpt); } .msg.sys .meta b { color: var(--danger); }
+  .meta time { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .tag { color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; line-height: 17px; text-transform: uppercase; }
+  .copy { margin-left: auto; display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+  .msg:hover .copy, .copy:focus-visible, .copy.done { opacity: 1; }
+  .copy:hover { background: var(--surface-2); color: var(--text); }
+  .copy.done { color: var(--gpt); }
+  .msg.you { justify-content: flex-end; }
+  .msg.you .bubble { max-width: 82%; padding: 9px 14px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .msg.sys .content { padding: 8px 12px 10px; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent); border-radius: 10px; }
+  .handoff { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 3px 9px 3px 7px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 12px; }
+  .handoff .to { display: inline-flex; align-items: center; gap: 5px; color: var(--text); font-weight: 500; }
+  .handoff .to.claude { color: var(--claude); } .handoff .to.chatgpt { color: var(--gpt); }
+
+  .md { overflow-wrap: anywhere; }
+  .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
+  .md p { margin: 0 0 8px; }
+  .md ul, .md ol { margin: 0 0 8px; padding-left: 20px; }
+  .md li { margin: 3px 0; }
+  .md li::marker { color: var(--faint); }
+  .md li.task { list-style: none; margin-left: -20px; display: flex; gap: 8px; }
+  .md li.task::before { content: "○"; color: var(--faint); }
+  .md li.task.done::before { content: "●"; color: var(--gpt); }
+  .md h4 { margin: 14px 0 6px; font-size: 13.5px; font-weight: 600; }
+  .md code { padding: 1px 5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; font: 12.5px var(--mono); }
+  .md pre { margin: 0 0 8px; padding: 12px 14px; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; }
+  .md pre code { padding: 0; background: none; border: 0; line-height: 1.6; overflow-wrap: normal; }
+
+  /* Working */
+  .working { display: flex; gap: 12px; padding: 12px 0; }
+  .working .av::after { content: ""; position: absolute; inset: -3px; border-radius: 10px; border: 1.5px solid currentColor; animation: ring 1.6s ease-out infinite; }
+  @keyframes ring { from { transform: scale(.92); opacity: .55; } to { transform: scale(1.22); opacity: 0; } }
+  .working .meta span { color: var(--muted); }
+  .skeleton { display: grid; gap: 8px; margin-top: 8px; }
+  .skeleton i { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--surface-2) 0%, var(--line-strong) 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: shimmer 1.5s linear infinite; }
+  .skeleton i:nth-child(1) { width: 74%; } .skeleton i:nth-child(2) { width: 56%; } .skeleton i:nth-child(3) { width: 34%; }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+  /* Empty state */
+  .empty { position: relative; isolation: isolate; max-width: 540px; margin: 8vh auto 24px; text-align: center; }
+  .empty::before { content: ""; position: absolute; z-index: -1; left: 50%; top: -40px; width: min(520px, 100%); height: 240px; transform: translateX(-50%);
+    background: radial-gradient(closest-side at 32% 50%, var(--claude-soft), transparent), radial-gradient(closest-side at 68% 50%, var(--gpt-soft), transparent); filter: blur(24px); }
+  .duo { display: inline-flex; align-items: center; gap: 14px; }
+  .duo .av { width: 52px; height: 52px; border-radius: 14px; }
+  .link { display: flex; gap: 5px; }
+  .link i { width: 5px; height: 5px; border-radius: 50%; background: var(--line-strong); animation: hop 1.8s ease-in-out infinite; }
+  .link i:nth-child(2) { animation-delay: .2s; } .link i:nth-child(3) { animation-delay: .4s; }
+  @keyframes hop { 0%, 60%, 100% { background: var(--line-strong); } 30% { background: var(--muted); } }
+  .empty h1 { margin: 22px 0 8px; font: 650 26px/1.2 var(--display); letter-spacing: -.025em; }
+  .empty p { max-width: 450px; margin: 0 auto 24px; color: var(--muted); }
+  .empty p b { color: var(--text); font-weight: 600; }
+  .examples { display: grid; gap: 8px; text-align: left; }
+  .examples button { display: flex; align-items: center; gap: 12px; padding: 11px 14px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .examples button:hover { background: var(--surface-2); border-color: var(--line-strong); }
+  .examples button > span { flex: 1; }
+  .examples small { flex: none; color: var(--faint); font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+  .examples .ico { color: var(--faint); }
+
+  /* Composer */
+  .composer-wrap { padding: 4px 24px 16px; }
+  .composer { max-width: 780px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
+  .composer:focus-within { border-color: color-mix(in srgb, var(--text) 30%, var(--line-strong)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 6%, transparent); }
+  textarea { display: block; width: 100%; min-height: 50px; max-height: 40vh; padding: 14px 16px 4px; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: 14px/1.55 var(--font); }
+  textarea::placeholder { color: var(--faint); }
+  textarea:focus-visible { outline: none; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 8px 8px 10px; }
+  .opts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .field { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+  .seg { display: inline-flex; padding: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
+  .seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 26px; min-width: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); font-weight: 600; box-shadow: var(--shadow), inset 0 0 0 1px var(--line-strong); }
+  .seg button[aria-pressed="true"] .ico.claude { color: var(--claude); }
+  .seg button[aria-pressed="true"] .ico.chatgpt { color: var(--gpt); }
+  .seg.small button { padding: 0 8px; }
+  .actions { display: flex; gap: 8px; margin-left: auto; }
+  .hint { max-width: 780px; margin: 8px auto 0; padding: 0 4px; color: var(--faint); font-size: 12px; }
+  .hint.error { color: var(--danger); }
+
+  /* Side panel */
+  .side { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; background: var(--bg); border-left: 1px solid var(--line); }
+  .card { padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card h2 { margin: 0; color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .count { color: var(--muted); font: 12px var(--mono); }
+  .progress { height: 4px; margin: -4px 0 14px; overflow: hidden; border-radius: 2px; background: var(--surface-2); }
+  .progress span { display: block; width: 0; height: 100%; background: var(--gpt); transition: width .3s; }
+  .plan ul { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+  .plan li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; }
+  .check { flex: none; display: grid; place-items: center; width: 16px; height: 16px; margin-top: 1px; border: 1.5px solid var(--line-strong); border-radius: 50%; color: var(--on-primary); }
+  .plan li.done .check { background: var(--gpt); border-color: var(--gpt); }
+  .plan li.done .t { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+  .note { margin: 0; color: var(--muted); font-size: 13px; }
+  .team { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .team li { display: flex; align-items: flex-start; gap: 10px; }
+  .team b { display: block; font-size: 13px; font-weight: 600; }
+  .team .r { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+  .tools { display: grid; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .tools div { display: flex; align-items: center; gap: 7px; }
+  .tools code { color: var(--text); font: 11.5px var(--mono); }
+  .credit { margin-top: auto; padding: 4px 2px; color: var(--faint); font-size: 11.5px; line-height: 1.5; }
+  .credit a { color: var(--muted); text-decoration: none; }
+  .credit a:hover { color: var(--text); text-decoration: underline; }
+  .scrim { display: none; }
+
+  @media (max-width: 1000px) {
+    .body { grid-template-columns: minmax(0, 1fr); }
+    #planToggle { display: inline-flex; }
+    .side { position: fixed; top: 52px; right: 0; bottom: 0; z-index: 20; width: min(340px, 92vw); transform: translateX(100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
+    .side.open { transform: none; visibility: visible; box-shadow: -12px 0 32px rgba(0, 0, 0, .25); }
+    .scrim.open { display: block; position: fixed; inset: 52px 0 0 0; z-index: 15; background: rgba(0, 0, 0, .35); }
+  }
+  @media (max-width: 640px) {
+    .top { padding: 0 8px 0 12px; }
+    .crumb, .project, #clear span { display: none; }
+    .log-inner { padding: 16px 16px 4px; }
+    .composer-wrap { padding: 4px 12px 12px; }
+    .field > span, .seg .lbl { display: none; }
+    .opts { gap: 6px; }
+    .btn kbd { display: none; }
+    .msg.you .bubble { max-width: 92%; }
+    .empty h1 { font-size: 22px; }
+    .copy { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-claude" viewBox="0 0 24 24"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></symbol>
+  <symbol id="i-chatgpt" viewBox="0 0 24 24"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-talk" viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
+</svg>
+
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <img class="logo" src="/logo.svg" alt="">
+      <span class="name">DuoForge</span>
+      <span class="crumb">/</span>
+      <span class="project" id="project"><svg class="ico line" width="14" height="14"><use href="#i-folder"/></svg><span>…</span></span>
+    </div>
+    <div class="top-right">
+      <button class="btn ghost" id="planToggle" aria-controls="side" aria-expanded="false"><svg class="ico line" width="16" height="16"><use href="#i-plan"/></svg>Plan</button>
+      <button class="btn ghost" id="clear" title="Clear the conversation"><svg class="ico line" width="16" height="16"><use href="#i-plus"/></svg><span>New chat</span></button>
+    </div>
+    <div class="busybar" id="busybar" hidden><span></span></div>
+  </header>
+
+  <div class="body">
+    <main class="chat">
+      <div class="log" id="log"><div class="log-inner"><div id="msgs"></div><div id="working"></div></div></div>
+      <div class="composer-wrap">
+        <form class="composer" id="composer">
+          <textarea id="text" rows="1" aria-label="Message"></textarea>
+          <div class="bar">
+            <div class="opts">
+              <div class="seg" id="mode" role="group" aria-label="Mode">
+                <button type="button" data-v="discuter" title="They answer and debate. Read-only."><svg class="ico line" width="14" height="14"><use href="#i-talk"/></svg><span class="lbl">Discuss</span></button>
+                <button type="button" data-v="equipe" title="They edit files and run tools, one step each."><svg class="ico line" width="14" height="14"><use href="#i-code"/></svg><span class="lbl">Team</span></button>
+              </div>
+              <div class="field"><span id="roundsLabel">Rounds</span><div class="seg small" id="rounds" role="group" aria-label="Rounds"></div></div>
+              <div class="field"><span>First</span>
+                <div class="seg small" id="first" role="group" aria-label="Who starts">
+                  <button type="button" data-v="claude" title="Claude starts"><svg class="ico claude" width="13" height="13"><use href="#i-claude"/></svg><span class="lbl">Claude</span></button>
+                  <button type="button" data-v="chatgpt" title="ChatGPT starts"><svg class="ico chatgpt" width="13" height="13"><use href="#i-chatgpt"/></svg><span class="lbl">ChatGPT</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn stop" id="stop" hidden><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg>Stop</button>
+              <button type="submit" class="btn primary" id="send"><span id="sendLabel">Send</span><kbd>↵</kbd></button>
+            </div>
+          </div>
+        </form>
+        <p class="hint" id="hint"></p>
+      </div>
+    </main>
+
+    <div class="scrim" id="scrim"></div>
+    <aside class="side" id="side">
+      <section class="card">
+        <div class="card-head"><h2>Plan</h2><span class="count" id="planCount"></span></div>
+        <div class="progress" id="planProgress" hidden><span id="planBar"></span></div>
+        <div class="plan" id="plan"></div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Team</h2></div>
+        <ul class="team">
+          <li><span class="av claude"><svg class="ico" width="16" height="16"><use href="#i-claude"/></svg></span><div><b>Claude</b><span class="r" id="roleClaude"></span></div></li>
+          <li><span class="av chatgpt"><svg class="ico" width="16" height="16"><use href="#i-chatgpt"/></svg></span><div><b>ChatGPT</b><span class="r" id="roleChatgpt"></span></div></li>
+        </ul>
+        <div class="tools">
+          <div><svg class="ico line" width="13" height="13"><use href="#i-shield"/></svg>No web access for either AI</div>
+          <div id="tools"></div>
+        </div>
+      </section>
+      <footer class="credit">
+        DuoForge · made by <a href="https://github.com/4me89/DuoForge" target="_blank" rel="noopener">4me89</a> · MIT<br>
+        Not affiliated with Anthropic or OpenAI.
+      </footer>
+    </aside>
+  </div>
+</div>
+
+<template id="emptyTpl">
+  <div class="empty">
+    <div class="duo">
+      <span class="av claude"><svg class="ico" width="26" height="26"><use href="#i-claude"/></svg></span>
+      <span class="link"><i></i><i></i><i></i></span>
+      <span class="av chatgpt"><svg class="ico" width="26" height="26"><use href="#i-chatgpt"/></svg></span>
+    </div>
+    <h1>Two AIs. One project.</h1>
+    <p>Claude and ChatGPT read the same chat. In <b>Discuss</b> they answer and challenge each other. In <b>Team</b> they work on your project, one step each, then hand back to you.</p>
+    <div class="examples">
+      <button type="button" data-mode="discuter" data-p="Look at the last commits. What are the biggest risks in this project right now?"><svg class="ico line" width="15" height="15"><use href="#i-talk"/></svg><span>Review the latest changes and list the risks</span><small>Discuss</small></button>
+      <button type="button" data-mode="discuter" data-p="I want to add a new feature: ___. How should we build it? Split the work between you."><svg class="ico line" width="15" height="15"><use href="#i-talk"/></svg><span>Plan a new feature together</span><small>Discuss</small></button>
+      <button type="button" data-mode="equipe" data-p="Write PLAN.md for the next small step of this project, then do the first task and check it works."><svg class="ico line" width="15" height="15"><use href="#i-code"/></svg><span>Write a plan, then do the first task</span><small>Team</small></button>
+    </div>
+  </div>
+</template>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const SECRET = "__DUO_SECRET__"; // replaced by the server at each launch
+const api = (url, body) => fetch(url, {
+  method: body ? "POST" : "GET",
+  headers: { "X-Duo-Secret": SECRET, "Content-Type": "application/json" },
+  body: body ? JSON.stringify(body) : undefined,
+});
+const NAMES = { toi: "You", claude: "Claude", chatgpt: "ChatGPT", systeme: "Problem" };
+const MODES = { discuter: "Discuss", equipe: "Team" };
+const ROUNDS = { discuter: ["1", "2", "3"], equipe: ["4", "8", "12"] };
+const HINTS = {
+  discuter: "Discuss: read-only, they change nothing. Rounds = how many times they reply to each other.",
+  equipe: "Team: they edit files and run tools, one step each, then hand back. Steps = the most steps they can take.",
+};
+const PLACEHOLDERS = { discuter: "Ask both of them anything about your project…", equipe: "Give them a task. They plan it, do it, and check it…" };
+const ico = (id, size = 16, cls = "") => `<svg class="ico ${cls}" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const line = (id, size = 16) => ico(id, size, "line");
+
+const store = {
+  get(k) { try { return localStorage.getItem("duoforge." + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem("duoforge." + k, v); } catch {} },
+};
+
+// --- Segmented controls ---
+const val = (id) => $(`#${id} [aria-pressed="true"]`)?.dataset.v;
+function press(id, v) {
+  const buttons = [...$(`#${id}`).querySelectorAll("button")];
+  const target = buttons.find((b) => b.dataset.v === v) || buttons[0];
+  buttons.forEach((b) => b.setAttribute("aria-pressed", String(b === target)));
+}
+function setMode(m) {
+  press("mode", m);
+  $("#rounds").innerHTML = ROUNDS[m].map((v) => `<button type="button" data-v="${v}">${v}</button>`).join("");
+  press("rounds", ROUNDS[m][0]);
+  $("#roundsLabel").textContent = m === "equipe" ? "Steps" : "Rounds";
+  $("#rounds").setAttribute("aria-label", m === "equipe" ? "Steps" : "Rounds");
+  $("#text").placeholder = PLACEHOLDERS[m];
+  hint(HINTS[m]);
+  store.set("mode", m);
+}
+for (const id of ["mode", "rounds", "first"]) {
+  $(`#${id}`).addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (id === "mode") setMode(b.dataset.v);
+    else { press(id, b.dataset.v); if (id === "first") store.set("first", b.dataset.v); }
+  });
+}
+function hint(text, error = false) {
+  $("#hint").textContent = text;
+  $("#hint").classList.toggle("error", error);
+}
+
+// --- Small, safe Markdown (everything is escaped first) ---
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const inline = (s) => s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+function md(src) {
+  const blocks = [];
+  const s = esc(src || "").replace(/```[\w+-]*\n?([\s\S]*?)```/g, (_, c) => `\u0000${blocks.push(c.replace(/\n$/, "")) - 1}\u0000`);
+  const out = [];
+  let list = null;
+  const close = () => { if (list) { out.push(`<${list.tag}>${list.items.join("")}</${list.tag}>`); list = null; } };
+  for (const ln of s.split("\n")) {
+    const code = ln.trim().match(/^\u0000(\d+)\u0000$/);
+    const task = ln.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.*)/);
+    const ul = ln.match(/^\s*[-*]\s+(.*)/);
+    const ol = ln.match(/^\s*\d+[.)]\s+(.*)/);
+    const h = ln.match(/^#{1,6}\s+(.*)/);
+    if (code) { close(); out.push(`<pre><code>${blocks[code[1]]}</code></pre>`); continue; }
+    if (task || ul || ol) {
+      const tag = ol && !ul ? "ol" : "ul";
+      if (!list || list.tag !== tag) { close(); list = { tag, items: [] }; }
+      list.items.push(task ? `<li class="task${task[1] === " " ? "" : " done"}">${inline(task[2])}</li>` : `<li>${inline((ul || ol)[1])}</li>`);
+      continue;
+    }
+    close();
+    if (h) out.push(`<h4>${inline(h[1])}</h4>`);
+    else if (ln.trim()) out.push(`<p>${inline(ln)}</p>`);
+  }
+  close();
+  return out.join("").replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${blocks[i]}</code>`);
+}
+
+// --- Rendering ---
+const clock = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "");
+const secs = (ms) => { const s = Math.round(ms / 1000); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`; };
+const avatar = (who, size = 16) => `<span class="av ${who}">${ico(who, size)}</span>`;
+const copyBtn = (i) => `<button type="button" class="copy" data-i="${i}" title="Copy" aria-label="Copy message">${line("copy", 14)}</button>`;
+
+function message(m, i) {
+  const tag = m.mode ? `<span class="tag">${MODES[m.mode] || ""}</span>` : "";
+  const meta = (name) => `<div class="meta"><b>${name}</b>${tag}<time>${clock(m.at)}</time>${copyBtn(i)}</div>`;
+  if (m.who === "toi") return `<article class="msg you"><div class="bubble">${meta("You")}<div class="md">${md(m.text)}</div></div></article>`;
+  if (m.who === "systeme") return `<article class="msg sys"><span class="av sys">!</span><div class="content">${meta("Problem")}<div class="md">${md(m.text)}</div></div></article>`;
+  const who = m.who === "claude" ? "claude" : "chatgpt";
+  let next = "";
+  if (m.next === "user") next = `<div class="handoff">${line("arrow", 13)}<span class="to">Your turn</span></div>`;
+  else if (m.next === "claude" || m.next === "chatgpt") next = `<div class="handoff">${line("arrow", 13)}Hands over to<span class="to ${m.next}">${ico(m.next, 12)}${NAMES[m.next]}</span></div>`;
+  return `<article class="msg ${who}">${avatar(who)}<div class="content">${meta(NAMES[who])}<div class="md">${md(m.text)}</div>${next}</div></article>`;
+}
+
+let state = null;
+let shown = -1;
+function render(s) {
+  state = s;
+  const log = $("#log");
+  const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+  if (s.messages.length !== shown) {
+    shown = s.messages.length;
+    $("#msgs").innerHTML = shown ? s.messages.map(message).join("") : $("#emptyTpl").innerHTML;
+  }
+  const busy = s.busy;
+  const color = busy === "claude" ? "var(--claude)" : "var(--gpt)";
+  $("#working").innerHTML = busy
+    ? `<div class="working">${avatar(busy)}<div class="content"><div class="meta"><b style="color:${color}">${NAMES[busy]}</b><span>is working · ${secs(s.since || 0)}</span></div><div class="skeleton"><i></i><i></i><i></i></div></div></div>`
+    : "";
+  if (nearBottom || busy) log.scrollTop = log.scrollHeight;
+
+  $("#busybar").hidden = !busy;
+  $("#busybar").style.setProperty("--c", color);
+  document.title = busy ? `${NAMES[busy]} is working… · DuoForge` : "DuoForge";
+  $("#project span").textContent = s.projet || "project";
+  $("#project").title = s.dossier || "";
+  $("#roleClaude").textContent = s.roles?.claude || "";
+  $("#roleChatgpt").textContent = s.roles?.chatgpt || "";
+  $("#tools").innerHTML = `${line("plug", 13)}<span>Claude's extra tools: ${s.connecteurs?.length ? s.connecteurs.map((c) => `<code>${esc(c)}</code>`).join(", ") : "none"}</span>`;
+  renderPlan(s.plan || "");
+
+  const empty = !$("#text").value.trim();
+  $("#sendLabel").textContent = empty && shown > 0 ? "Continue" : "Send";
+  $("#send").title = empty && shown > 0 ? "Let them continue from where they stopped" : "";
+  $("#send").disabled = !!busy || (empty && shown === 0);
+  $("#stop").hidden = !busy;
+  $("#clear").disabled = !!busy;
+}
+
+function renderPlan(text) {
+  const items = [];
+  for (const ln of text.split("\n")) {
+    const m = ln.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.*)/);
+    if (m) items.push({ done: m[1] !== " ", text: m[2] });
+  }
+  const done = items.filter((i) => i.done).length;
+  $("#planCount").textContent = items.length ? `${done}/${items.length}` : "";
+  $("#planProgress").hidden = !items.length;
+  $("#planBar").style.width = items.length ? `${(100 * done) / items.length}%` : "0";
+  if (!text.trim()) $("#plan").innerHTML = '<p class="note">No plan yet. In Team mode they write PLAN.md and tick tasks as they go.</p>';
+  else if (!items.length) $("#plan").innerHTML = `<div class="md">${md(text)}</div>`;
+  else $("#plan").innerHTML = `<ul>${items.map((i) => `<li class="${i.done ? "done" : ""}"><span class="check">${i.done ? line("check", 10) : ""}</span><span class="t">${inline(esc(i.text))}</span></li>`).join("")}</ul>`;
+}
+
+let offlineShown = false;
+async function refresh() {
+  try {
+    const r = await api("/api/state");
+    if (r.status === 403) return offline("DuoForge was restarted: reload this page.");
+    if (offlineShown) { offlineShown = false; hint(HINTS[val("mode")]); }
+    render(await r.json());
+  } catch { offline("The DuoForge server is not running (node server.js)."); }
+}
+function offline(text) {
+  offlineShown = true;
+  hint(text, true);
+  $("#send").disabled = true;
+  $("#busybar").hidden = true;
+}
+
+// --- Actions ---
+const text = $("#text");
+function autosize() { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, innerHeight * 0.4) + "px"; }
+text.addEventListener("input", () => { autosize(); if (state) render(state); });
+text.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!$("#send").disabled) sendMsg(); }
+});
+$("#composer").addEventListener("submit", (e) => { e.preventDefault(); if (!$("#send").disabled) sendMsg(); });
+
+async function sendMsg() {
+  $("#send").disabled = true;
+  try {
+    const r = await api("/api/send", { text: text.value, mode: val("mode"), rounds: val("rounds"), first: val("first") });
+    if (r.ok) { text.value = ""; autosize(); hint(HINTS[val("mode")]); }
+    else hint(r.status === 409 ? "They are still working. Wait, or press Stop." : r.status === 403 ? "DuoForge was restarted: reload this page." : "Could not send the message.", true);
+  } catch { hint("The DuoForge server is not running (node server.js).", true); }
+  refresh();
+}
+
+$("#stop").onclick = () => api("/api/stop", {}).then(refresh);
+
+let armed = null;
+function disarm() { clearTimeout(armed); armed = null; $("#clear").classList.remove("armed"); $("#clear span").textContent = "New chat"; }
+$("#clear").onclick = async () => {
+  if (!armed) {
+    $("#clear").classList.add("armed");
+    $("#clear span").textContent = "Click again to clear";
+    armed = setTimeout(disarm, 4000);
+    return;
+  }
+  disarm();
+  await api("/api/clear", {});
+  refresh();
+};
+
+$("#msgs").addEventListener("click", async (e) => {
+  const copy = e.target.closest(".copy");
+  if (copy) {
+    try { await navigator.clipboard.writeText(state.messages[copy.dataset.i].text); } catch { return; }
+    copy.classList.add("done");
+    copy.innerHTML = line("check", 14);
+    setTimeout(() => { copy.classList.remove("done"); copy.innerHTML = line("copy", 14); }, 1400);
+    return;
+  }
+  const b = e.target.closest(".examples button");
+  if (!b) return;
+  setMode(b.dataset.mode);
+  text.value = b.dataset.p;
+  autosize();
+  text.focus();
+  const blank = text.value.indexOf("___");
+  if (blank >= 0) text.setSelectionRange(blank, blank + 3);
+  if (state) render(state);
+});
+
+function togglePlan(open) {
+  $("#side").classList.toggle("open", open);
+  $("#scrim").classList.toggle("open", open);
+  $("#planToggle").setAttribute("aria-expanded", String(open));
+}
+$("#planToggle").onclick = () => togglePlan(!$("#side").classList.contains("open"));
+$("#scrim").onclick = () => togglePlan(false);
+
+setMode(store.get("mode") === "equipe" ? "equipe" : "discuter");
+press("first", store.get("first") || "claude");
+autosize();
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>
